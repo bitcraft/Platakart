@@ -40,7 +40,11 @@ class Resources(object):
             yield "image", key
 
     def load_sounds(self):
-        yield None, None
+        for key, path in self.sounds.items():
+            full_path = os.path.join(self.path, path)
+            self.sounds[key] = pygame.mixer.Sound(full_path)
+            logger.debug("Loaded sound %s" % full_path)
+            yield "sound", key
 
     def load_tilemaps(self):
         yield None, None
@@ -117,22 +121,34 @@ class Game(object):
 
         self.display_size = (self.display_width, self.display_height)
         pub.subscribe(self.switch_state, "game.switch-state")
+        pub.subscribe(self.play_sound, "game.play-sound")
+        pub.subscribe(self.stop_sound, "game.stop-sound")
 
     def init_pygame(self):
         logger.debug("Initializing pygame")
         pygame.display.init()
         pygame.font.init()
+        pygame.mixer.init()
         screen = pygame.display.set_mode(self.display_size)
         pygame.display.set_caption(GAMETITLE)
         return screen
 
     def switch_state(self, name):
-        self.current_state.shutdown()
+        self.current_state.teardown()
         self.current_state = self.states[name]
-        self.current_state.startup()
+        self.current_state.setup()
 
     def signal_handler(signal, frame):
         self.shutting_down = True
+
+    def play_sound(self, name=None, loops=0, maxtime=0, fade_ms=0):
+        self.resources.sounds[name].play(loops, maxtime, fade_ms)
+
+    def stop_sound(self, name=None, fade_ms=0):
+        if fade_ms == 0:
+            self.resources.sounds[name].stop()
+        else:
+            self.resources.sounds[name].fadeout(fade_ms)
 
     def main_loop(self):
         screen = self.init_pygame()
@@ -172,7 +188,7 @@ class Game(object):
                 elif t == MOUSEBUTTONDOWN:
                     pub.sendMessage("input.mouse-down", pos=event.pos,
                                     button=event.button)
-                                    
+
                 elif t == MOUSEBUTTONUP:
                     pub.sendMessage("input.mouse-up", pos=event.pos,
                                     button=event.button)
@@ -200,9 +216,11 @@ def create_game(config_path):
         conf = dict()
     else:
         conf = parse_config(config_path)
-    
+
     from platakart.title import TitleScene
+    from platakart.kartselect import KartSelectScene
     resources = Resources()
-    states = {"title": TitleScene(resources)}
+    states = {"title": TitleScene(resources),
+              "kart-select": KartSelectScene(resources)}
     g = Game(conf, states, states["title"], resources)
     return g

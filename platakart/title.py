@@ -4,12 +4,13 @@ import logging
 from pubsub import pub
 import pygame.display
 import pygame.font
-
+import pygame.draw
 logger = logging.getLogger("platakart.title")
 
 from platakart.core import Scene
 
 PERCENT_COLOR = (255, 255, 255)
+FADE_COLOR = (0, 0, 0)
 
 class TitleScene(Scene):
 
@@ -24,8 +25,9 @@ class TitleScene(Scene):
         self.font = None
         self.percent_surf = None
         self.button_rect = None
+        self.fading_out = -0.1
         pub.subscribe(self.on_resource_loaded, "resources.loading")
-        pub.subscribe(self.on_mouse_move, "input.mouse-move")
+        pub.subscribe(self.on_mouse_down, "input.mouse-down")
         pub.subscribe(self.on_mouse_up, "input.mouse-up")
 
     def get_name(self):
@@ -51,19 +53,25 @@ class TitleScene(Scene):
             if int(percent) != 1:
                 self.render_percent = True
             elif int(percent) == 1:
+                pub.sendMessage("game.play-sound", name="menu-theme", loops=-1)
                 self.render_button = True
 
-    def on_mouse_move(self, pos, rel, buttons):
+    def on_mouse_down(self, pos, button):
         if self.button_rect:
             if self.button_rect.collidepoint(pos):
                 self.render_button = "hover"
-            else:
-                self.render_button = "normal"
 
     def on_mouse_up(self, pos, button):
         if self.button_rect:
             if self.button_rect.collidepoint(pos):
                 logger.debug("Mouse clicked button")
+                pub.sendMessage("game.play-sound", name="menu-select")
+                pub.sendMessage("game.stop-sound",
+                                name="menu-theme",
+                                fade_ms=250)
+                self.fading_out = 0.0
+            self.render_button = "normal"
+
 
     def update(self, screen, delta):
         if not self.loaded:
@@ -115,3 +123,14 @@ class TitleScene(Scene):
             screen.blit(label_surf, label_rect)
             pygame.display.flip()
             self.render_button = False
+
+        if self.fading_out >= 0:
+            self.fading_out += 10
+            fade_rect = screen.get_rect()
+            amt = fade_rect.height * float(self.fading_out) / 100.0
+            logger.debug(amt)
+            fade_rect.height = int(amt)
+            pygame.draw.rect(screen, FADE_COLOR, fade_rect)
+            pygame.display.update(fade_rect)
+        elif int(self.fading_out) == 100:
+            pub.sendMessage("game.switch-state", name="kart-select")            

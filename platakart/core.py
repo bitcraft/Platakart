@@ -1,8 +1,6 @@
 # -*- coding: utf-8; -*-
 
 import logging
-import signal
-import sys
 import ConfigParser
 import os.path
 from pubsub import pub
@@ -13,6 +11,11 @@ from pygame.time import Clock
 import pygame
 import pygame.event
 import pygame.font
+import pytmx
+
+from platakart.title import TitleScene
+from platakart.kartselect import KartSelectScene
+from platakart.trackselect import TrackSelectScene
 
 SHOWFPSEVENT = pygame.USEREVENT + 1
 GAMETITLE = "Platakart"
@@ -47,7 +50,11 @@ class Resources(object):
             yield "sound", key
 
     def load_tilemaps(self):
-        yield None, None
+        for key, path in self.tilemaps.items():
+            full_path = os.path.join(self.path, path)
+            self.tilemaps[key] = pytmx.load_pygame(full_path)
+            logger.debug("Loaded tilemap %s" % full_path)
+            yield "tilemap", key
 
     def load_fonts(self):
         yield None, None
@@ -83,28 +90,15 @@ class Resources(object):
         self.loaded = True
         pub.sendMessage("resources.loaded")
 
-class Scene(object):
-
-    def get_name(self):
-        raise NotImplemented
-
-    def setup(self):
-        raise NotImplemented
-
-    def teardown(self):
-        pass
-
-    def update(self, screen, delta):
-        pass
 
 class Game(object):
 
-    def __init__(self, config, states, starting_state, resources):
+    def __init__(self, config, scenes, starting_scene, resources):
         self.clock = Clock()
         self.config = config
         self.shutting_down = False
-        self.states = states
-        self.current_state = starting_state
+        self.scenes = scenes
+        self.current_scene = starting_scene
         self.resources = resources
 
         try:
@@ -120,7 +114,7 @@ class Game(object):
             self.display_height = 480
 
         self.display_size = (self.display_width, self.display_height)
-        pub.subscribe(self.switch_state, "game.switch-state")
+        pub.subscribe(self.switch_scene, "game.switch-scene")
         pub.subscribe(self.play_sound, "game.play-sound")
         pub.subscribe(self.stop_sound, "game.stop-sound")
 
@@ -133,16 +127,17 @@ class Game(object):
         pygame.display.set_caption(GAMETITLE)
         return screen
 
-    def switch_state(self, name):
-        self.current_state.teardown()
-        self.current_state = self.states[name]
-        self.current_state.setup()
-
-    def signal_handler(signal, frame):
-        self.shutting_down = True
+    def switch_scene(self, name, options):
+        self.current_scene.teardown()
+        self.current_scene = self.scenes[name]
+        if options is None:
+            self.current_scene.setup()
+        else:
+            self.current_scene.setup(dict(options))
 
     def play_sound(self, name=None, loops=0, maxtime=0, fade_ms=0):
-        self.resources.sounds[name].play(loops, maxtime, fade_ms)
+        if int(self.config.get("sound_enabled", 0)):
+            self.resources.sounds[name].play(loops, maxtime, fade_ms)
 
     def stop_sound(self, name=None, fade_ms=0):
         if fade_ms == 0:
@@ -172,7 +167,7 @@ class Game(object):
         MOUSEBUTTONDOWN = pygame.MOUSEBUTTONDOWN
         MOUSEBUTTONUP = pygame.MOUSEBUTTONUP
         pygame.time.set_timer(SHOWFPSEVENT, 3000)
-        self.current_state.setup()
+        self.current_scene.setup()
         while not self.shutting_down:
             pump()
             for event in get():
@@ -193,7 +188,7 @@ class Game(object):
                     pub.sendMessage("input.mouse-up", pos=event.pos,
                                     button=event.button)
             delta = self.clock.tick(target_fps)
-            self.current_state.update(screen, delta)
+            self.current_scene.update(screen, delta)
 
 
 def parse_config(config_path):
@@ -217,10 +212,9 @@ def create_game(config_path):
     else:
         conf = parse_config(config_path)
 
-    from platakart.title import TitleScene
-    from platakart.kartselect import KartSelectScene
     resources = Resources()
-    states = {"title": TitleScene(resources),
-              "kart-select": KartSelectScene(resources)}
-    g = Game(conf, states, states["title"], resources)
+    scenes = {"title": TitleScene(resources),
+              "kart-select": KartSelectScene(resources),
+              "track-select": TrackSelectScene(resources)}
+    g = Game(conf, scenes, scenes["title"], resources)
     return g

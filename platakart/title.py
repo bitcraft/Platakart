@@ -7,10 +7,12 @@ import pygame.font
 import pygame.draw
 logger = logging.getLogger("platakart.title")
 
-from platakart.core import Scene
+from platakart.ui import Scene
+from platakart.ui import WHITE
+from platakart.ui import BLACK
 
-PERCENT_COLOR = (255, 255, 255)
-FADE_COLOR = (0, 0, 0)
+PERCENT_COLOR = WHITE
+FADE_COLOR = BLACK
 
 class TitleScene(Scene):
 
@@ -68,7 +70,7 @@ class TitleScene(Scene):
                 pub.sendMessage("game.play-sound", name="menu-select")
                 pub.sendMessage("game.stop-sound",
                                 name="menu-theme",
-                                fade_ms=250)
+                                fade_ms=100)
                 self.fading_out = 0.0
             self.render_button = "normal"
 
@@ -102,6 +104,8 @@ class TitleScene(Scene):
             self.render_percent = False
 
         if self.render_button:
+            import pdb
+            pdb.set_trace()
             screen_rect = screen.get_rect()
 
             if self.render_button == "hover":
@@ -125,7 +129,7 @@ class TitleScene(Scene):
             self.render_button = False
 
         if self.fading_out >= 100:
-            pub.sendMessage("game.switch-state", name="kart-select")
+            pub.sendMessage("game.switch-scene", name="kart-select", options=None)
         elif self.fading_out >= 0:
             self.fading_out += 10
             fade_rect = screen.get_rect()

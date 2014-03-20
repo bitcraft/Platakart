@@ -82,7 +82,7 @@ class TitleScene(Scene):
                     self.loader_gen.next()
                 except StopIteration:
                     self.loaded = True
-                
+
         if self.render_title:
             screen_rect = screen.get_rect()
             screen.blit(self.resources.images["title"], screen_rect)
@@ -124,13 +124,12 @@ class TitleScene(Scene):
             pygame.display.flip()
             self.render_button = False
 
-        if self.fading_out >= 0:
+        if self.fading_out >= 100:
+            pub.sendMessage("game.switch-state", name="kart-select")
+        elif self.fading_out >= 0:
             self.fading_out += 10
             fade_rect = screen.get_rect()
             amt = fade_rect.height * float(self.fading_out) / 100.0
-            logger.debug(amt)
             fade_rect.height = int(amt)
             pygame.draw.rect(screen, FADE_COLOR, fade_rect)
             pygame.display.update(fade_rect)
-        elif int(self.fading_out) == 100:
-            pub.sendMessage("game.switch-state", name="kart-select")            

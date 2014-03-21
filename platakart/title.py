@@ -104,8 +104,6 @@ class TitleScene(Scene):
             self.render_percent = False
 
         if self.render_button:
-            import pdb
-            pdb.set_trace()
             screen_rect = screen.get_rect()
 
             if self.render_button == "hover":

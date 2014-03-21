@@ -5,6 +5,7 @@ import pygame.sprite
 
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
+BLUE = (0, 0, 255)
 
 # This is probably not the best place for Scene, but putting it here
 # helps to avoid forward declarations in core.py.

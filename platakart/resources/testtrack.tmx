@@ -2,7 +2,7 @@
 <map version="1.0" orientation="orthogonal" width="150" height="15" tilewidth="70" tileheight="70" backgroundcolor="#aaffff">
  <properties>
   <property name="description" value="Just a little test track to get things working with."/>
-  <property name="name" value="Test Track"/>
+  <property name="name" value="Test"/>
   <property name="thumbnail" value="testtrack-thumb"/>
  </properties>
  <tileset firstgid="1" source="tiles_spritesheet.tsx"/>

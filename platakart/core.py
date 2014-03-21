@@ -166,6 +166,8 @@ class Game(object):
         MOUSEMOTION = pygame.MOUSEMOTION
         MOUSEBUTTONDOWN = pygame.MOUSEBUTTONDOWN
         MOUSEBUTTONUP = pygame.MOUSEBUTTONUP
+        KEYDOWN = pygame.KEYDOWN
+        KEYUP = pygame.KEYUP
         pygame.time.set_timer(SHOWFPSEVENT, 3000)
         self.current_scene.setup()
         while not self.shutting_down:
@@ -183,10 +185,21 @@ class Game(object):
                 elif t == MOUSEBUTTONDOWN:
                     pub.sendMessage("input.mouse-down", pos=event.pos,
                                     button=event.button)
-
                 elif t == MOUSEBUTTONUP:
                     pub.sendMessage("input.mouse-up", pos=event.pos,
                                     button=event.button)
+                elif t == KEYUP:
+                    pub.sendMessage(
+                        "input.key-up",
+                        key=event.key, 
+                        mod=event.mod)
+                elif t == KEYDOWN:
+                    pub.sendMessage(
+                        "input.key-down",
+                        unicode=event.unicode,
+                        key=event.key,
+                        mod=event.mod)
+
             delta = self.clock.tick(target_fps)
             self.current_scene.update(screen, delta)
 

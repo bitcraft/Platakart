@@ -24,7 +24,6 @@ class KartSelectScene(Scene):
         self.buttons = None
         self.fading_out = -0.1
         self.selected_kart_id = None
-        pub.subscribe(self.on_button_clicked, "kart-select.button.clicked")
         
     def get_name(self):
         return "kart-select"
@@ -48,11 +47,14 @@ class KartSelectScene(Scene):
                                 (400, 380),
                                 self.resources.images["red_button_up"],
                                 self.resources.images["red_button_down"]))
+        pub.subscribe(self.on_button_clicked, "button.clicked")
+
 
     def teardown(self):
         logger.debug("Tearing down kart select scene")
         self.buttons = None
         self.font = None
+        pub.unsubscribe(self.on_button_clicked, "button.clicked")
 
     def update(self, screen, delta):
         if not self.rendered:

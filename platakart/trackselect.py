@@ -9,7 +9,10 @@ from pubsub import pub
 import pygame.display
 import pygame.font
 import pygame.sprite
-from pygame import K_LEFT, K_RIGHT, K_UP, K_DOWN
+from pygame import K_DOWN
+from pygame import K_LEFT
+from pygame import K_RIGHT
+from pygame import K_UP
 
 logger = logging.getLogger("platakart.trackselect")
 
@@ -37,10 +40,10 @@ class TrackButton(pygame.sprite.DirtySprite):
             self.hover_surf, BLUE, highlight_rect, 8)
         self.track_info = track_info
         self.rect = self.image.get_rect()
-        salt = "".join(sample(string.lowercase, 2))
-        label_surf = font.render(track_info.name + salt, True, WHITE)
+        label_surf = font.render(track_info.name, True, WHITE)
         label_rect = label_surf.get_rect()
         label_rect.center = self.rect.center
+        self.font = font
         self.thumb_surf.blit(label_surf, label_rect)
         self.hover_surf.blit(label_surf, label_rect)
         pub.subscribe(self.on_mouse_move, "input.mouse-move")
@@ -73,11 +76,20 @@ class TrackButtonBar(pygame.sprite.RenderUpdates):
         """Reposition all of the images based on the selected_index"""
         super(TrackButtonBar, self).update()
 
+    def get_selected_track(self):
+        return self.sprites()[self.selected_index].track_info
+
     def on_key_up(self, key, mod):
+        idx = self.selected_index
+
         if key == K_LEFT or key == K_UP:
             self.selected_index -= 1
+            pub.sendMessage("game.stop-sound", name="menu-switch")
+            pub.sendMessage("game.play-sound", name="menu-switch")
         elif key == K_RIGHT or key == K_DOWN:
             self.selected_index += 1
+            pub.sendMessage("game.stop-sound", name="menu-switch")
+            pub.sendMessage("game.play-sound", name="menu-switch")
 
         buttons = [s for s in self.sprites()]
         for button in buttons:
@@ -118,10 +130,9 @@ class TrackSelectScene(Scene):
         self.resources = resources
         self.rendered = False
         self.track_buttons = None
-        pub.subscribe(self.on_button_clicked, "kart-select.button.clicked")
 
     def get_name(self):
-        return "kart-select"
+        return "track-select"
 
     def setup(self, options=None):
         self.rendered = False
@@ -136,21 +147,38 @@ class TrackSelectScene(Scene):
             img = self.resources.images[info.thumbnail]
             self.track_buttons.add(
                 TrackButton(font, img, info))
+        self.track_buttons.on_key_up(None, None)
+        self.go_button = Button("go", "Go!", self.font, (400, 400),
+                                self.resources.images["red_button_up"],
+                                self.resources.images["red_button_down"])
+        pub.subscribe(self.on_button_clicked, "button.clicked")
 
     def teardown(self):
-        logger.debug("Tearing down kart select scene")
+        logger.debug("Tearing down track select scene")
         self.buttons = None
+        pub.unsubscribe(self.on_button_clicked, "button.clicked")
 
     def update(self, screen, delta):
         if self.track_buttons.dirty:
             screen_rect = screen.get_rect()
             screen.blit(self.resources.images["track-select"], screen_rect)
-            pygame.display.flip()
+
             self.rendered = True
             self.track_buttons.update()
             self.track_buttons.draw(screen)
-            pygame.display.update(self.track_buttons.rect)
-            self.track_buttons.dirty = False
+
+            track_info = self.track_buttons.get_selected_track()
+            
+            surf = self.font.render(track_info.name, True, WHITE)
+            surf_rect = screen.blit(surf, (200, 80))
+            margin = 8
+            for i, line in enumerate(track_info.description.split("|")):
+                surf_rect.top = 80 + (surf_rect.height + margin) * (i + 1)
+                surf = self.font.render(line.strip(), True, WHITE)
+                screen.blit(surf, surf_rect)
+
+            screen.blit(self.go_button.image, self.go_button.rect)
+            pygame.display.flip()
 
     def on_button_clicked(self, id):
-        logger.debug("Kart {%s} selected" % id)
+        logger.debug("Track {%s} selected" % id)

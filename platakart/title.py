@@ -28,9 +28,6 @@ class TitleScene(Scene):
         self.percent_surf = None
         self.button_rect = None
         self.fading_out = -0.1
-        pub.subscribe(self.on_resource_loaded, "resources.loading")
-        pub.subscribe(self.on_mouse_down, "input.mouse-down")
-        pub.subscribe(self.on_mouse_up, "input.mouse-up")
 
     def get_name(self):
         return "title"
@@ -38,6 +35,10 @@ class TitleScene(Scene):
     def setup(self):
         logger.debug("Setting up title scene")
         self.font = pygame.font.SysFont("Verdana", 32)
+        pub.subscribe(self.on_resource_loaded, "resources.loading")
+        pub.subscribe(self.on_mouse_down, "input.mouse-down")
+        pub.subscribe(self.on_mouse_up, "input.mouse-up")
+
 
     def teardown(self):
         logger.debug("Tearing down title scene")
@@ -45,6 +46,9 @@ class TitleScene(Scene):
         self.percent_surf = None
         self.render_title = False
         self.render_percent = False
+        pub.unsubscribe(self.on_resource_loaded, "resources.loading")
+        pub.unsubscribe(self.on_mouse_down, "input.mouse-down")
+        pub.unsubscribe(self.on_mouse_up, "input.mouse-up")
 
     def on_resource_loaded(self, percent, category, key):
         if category == "image" and key == "title":

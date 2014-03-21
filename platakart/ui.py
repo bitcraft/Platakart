@@ -63,7 +63,7 @@ class Button(pygame.sprite.DirtySprite):
             self.rect = self.up_rect
             self.dirty = 1
             pub.sendMessage("game.play-sound", name="menu-select")
-            pub.sendMessage("kart-select.button.clicked", id=self.id)
+            pub.sendMessage("button.clicked", id=self.id)
 
     def on_mouse_move(self, pos, rel, buttons):
         if self.image is self.down_surf:

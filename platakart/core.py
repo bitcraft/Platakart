@@ -16,6 +16,7 @@ import pytmx
 from platakart.title import TitleScene
 from platakart.kartselect import KartSelectScene
 from platakart.trackselect import TrackSelectScene
+from platakart.track import TrackScene
 
 SHOWFPSEVENT = pygame.USEREVENT + 1
 GAMETITLE = "Platakart"
@@ -191,7 +192,7 @@ class Game(object):
                 elif t == KEYUP:
                     pub.sendMessage(
                         "input.key-up",
-                        key=event.key, 
+                        key=event.key,
                         mod=event.mod)
                 elif t == KEYDOWN:
                     pub.sendMessage(
@@ -218,6 +219,7 @@ def parse_config(config_path):
     logger.debug("Config is: \n %s" % str(config))
     return config
 
+
 def create_game(config_path):
     if config_path is None:
         logger.warning("Starting with default configuration.")
@@ -228,6 +230,7 @@ def create_game(config_path):
     resources = Resources()
     scenes = {"title": TitleScene(resources),
               "kart-select": KartSelectScene(resources),
-              "track-select": TrackSelectScene(resources)}
+              "track-select": TrackSelectScene(resources),
+              "track": TrackScene(resources, conf)}
     g = Game(conf, scenes, scenes["title"], resources)
     return g

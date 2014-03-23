@@ -14,6 +14,7 @@ from platakart.ui import BLACK
 PERCENT_COLOR = WHITE
 FADE_COLOR = BLACK
 
+
 class TitleScene(Scene):
 
     def __init__(self, resources):
@@ -38,7 +39,6 @@ class TitleScene(Scene):
         pub.subscribe(self.on_resource_loaded, "resources.loading")
         pub.subscribe(self.on_mouse_down, "input.mouse-down")
         pub.subscribe(self.on_mouse_up, "input.mouse-up")
-
 
     def teardown(self):
         logger.debug("Tearing down title scene")
@@ -131,7 +131,8 @@ class TitleScene(Scene):
             self.render_button = False
 
         if self.fading_out >= 100:
-            pub.sendMessage("game.switch-scene", name="kart-select", options=None)
+            pub.sendMessage("game.switch-scene", name="track",
+                            options=None)
         elif self.fading_out >= 0:
             self.fading_out += 10
             fade_rect = screen.get_rect()

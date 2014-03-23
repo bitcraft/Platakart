@@ -72,6 +72,9 @@ class TrackButtonBar(pygame.sprite.RenderUpdates):
         self.dirty = True
         pub.subscribe(self.on_key_up, "input.key-up")
 
+    def __del__(self):
+        pub.unsubscribe(self.on_key_up, "input.key-up")
+
     def update(self):
         """Reposition all of the images based on the selected_index"""
         super(TrackButtonBar, self).update()

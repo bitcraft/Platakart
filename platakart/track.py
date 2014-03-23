@@ -70,7 +70,8 @@ class TrackScene(Scene):
     def make_kart(self, space):
         # set up chassis
         mass = 10
-        chassis_body = pymunk.Body(mass, pymunk.inf)
+        inertia = pymunk.moment_for_segment(mass, (-75, 0), (75, 0))
+        chassis_body = pymunk.Body(mass, inertia)
         chassis_body.position = 150, 300
         chassis = pymunk.Segment(chassis_body, (-75, 0), (75, 0), 15.0)
 
@@ -78,7 +79,7 @@ class TrackScene(Scene):
         mass = 1
         radius = 14
         inertia = pymunk.moment_for_circle(mass, 0, radius, (0, 0))
-        damping = 0.0
+        damping = 1.0
         stiffness = 300.0
 
         rear_wheel_body = pymunk.Body(mass, inertia)
@@ -99,18 +100,18 @@ class TrackScene(Scene):
             front_wheel_body, chassis_body, (0, 0), (50, -15), 50.0,
             stiffness, damping)
 
-        rear_slide_joint = pymunk.SlideJoint(chassis_body, rear_wheel_body,
-                                             (-50, -15), (0, 0), 27.0, 50.0)
-        front_slide_joint = pymunk.SlideJoint(chassis_body, front_wheel_body,
-                                              (50, -15), (0, 0), 27.0, 50.0)
+        rear_groove_joint = pymunk.GrooveJoint(chassis_body, rear_wheel_body,
+                                             (-50, -50), (-50, -15), (0, 0))
+        front_groove_joint = pymunk.GrooveJoint(chassis_body, front_wheel_body,
+                                              (50, -50), (50, -15), (0, 0))
 
         motor1 = pymunk.SimpleMotor(chassis_body, front_wheel_body, 0.0)
         motor2 = pymunk.SimpleMotor(chassis_body, rear_wheel_body, 0.0)
 
         space.add(chassis_body, chassis, rear_wheel_body, rear_wheel,
-                  rear_wheel_body_spring, rear_slide_joint,
+                  rear_wheel_body_spring, rear_groove_joint,
                   front_wheel_body, front_wheel,
-                  front_wheel_body_spring, front_slide_joint,
+                  front_wheel_body_spring, front_groove_joint,
                   motor1, motor2)
 
         return Kart(chassis_body, motor2, motor1)
@@ -118,10 +119,10 @@ class TrackScene(Scene):
     def on_key_up(self, key, mod):
         for kart in self.karts:
             if key == K_RIGHT:
-                kart.rear_motor.rate = -10
-                kart.front_motor.rate = -10
-            elif key == K_LEFT:
                 kart.rear_motor.rate = 10
                 kart.front_motor.rate = 10
+            elif key == K_LEFT:
+                kart.rear_motor.rate = -10
+                kart.front_motor.rate = -10
             elif key == K_UP:
                     kart.chassis.apply_impulse((0, 6000))

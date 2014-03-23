@@ -69,18 +69,18 @@ class TrackScene(Scene):
 
     def make_kart(self, space):
         # set up chassis
-        mass = 10
+        mass = 15
         inertia = pymunk.moment_for_segment(mass, (-75, 0), (75, 0))
         chassis_body = pymunk.Body(mass, inertia)
         chassis_body.position = 150, 300
         chassis = pymunk.Segment(chassis_body, (-75, 0), (75, 0), 15.0)
 
         # set up wheels
-        mass = 1
+        mass = 5
         radius = 14
         inertia = pymunk.moment_for_circle(mass, 0, radius, (0, 0))
-        damping = 1.0
-        stiffness = 300.0
+        damping = 0.01
+        stiffness = 205.0
 
         rear_wheel_body = pymunk.Body(mass, inertia)
         rear_wheel_body.position = (100, 250)
@@ -101,9 +101,9 @@ class TrackScene(Scene):
             stiffness, damping)
 
         rear_groove_joint = pymunk.GrooveJoint(chassis_body, rear_wheel_body,
-                                             (-50, -50), (-50, -15), (0, 0))
+                                               (-50, -50), (-50, -40), (0, 0))
         front_groove_joint = pymunk.GrooveJoint(chassis_body, front_wheel_body,
-                                              (50, -50), (50, -15), (0, 0))
+                                                (50, -50), (50, -40), (0, 0))
 
         motor1 = pymunk.SimpleMotor(chassis_body, front_wheel_body, 0.0)
         motor2 = pymunk.SimpleMotor(chassis_body, rear_wheel_body, 0.0)
@@ -125,4 +125,4 @@ class TrackScene(Scene):
                 kart.rear_motor.rate = -10
                 kart.front_motor.rate = -10
             elif key == K_UP:
-                    kart.chassis.apply_impulse((0, 6000))
+                    kart.chassis.apply_impulse((0, 12000))

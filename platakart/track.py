@@ -116,4 +116,4 @@ class TrackScene(Scene):
         elif key == K_UP:
             for ball in self.balls:
                 body = ball.body
-                body.apply_impulse((0, 300))
+                body.apply_impulse((0, 500))

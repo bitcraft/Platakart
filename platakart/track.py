@@ -47,7 +47,9 @@ class TrackScene(Scene):
         self.space.gravity = (0.0, -900.0)
 
         # floor
-        floor = pymunk.Segment(pymunk.Body(), (0, 20), (640, 20), 50.0)
+        floor_body = pymunk.Body()
+        floor_body.friction = 2.0
+        floor = pymunk.Segment(floor_body, (0, 20), (640, 20), 50.0)
         self.space.add(floor)
 
         self.karts = list()
@@ -79,19 +81,21 @@ class TrackScene(Scene):
         stiffness = 300.0
 
         rear_wheel_body = pymunk.Body(mass, inertia)
-        rear_wheel_body.friction = 100
+        rear_wheel_body.friction = 1.0
         rear_wheel_body.position = (100, 250)
         rear_wheel = pymunk.Circle(rear_wheel_body, radius, (0, 0))
+        rear_wheel.collision_type = 2
         rear_wheel_body_spring = pymunk.DampedSpring(
-            rear_wheel_body, chassis_body, (0, -15), (-50, -15), 50.0,
+            rear_wheel_body, chassis_body, (0, 0), (-50, -15), 50.0,
             stiffness, damping)
 
         front_wheel_body = pymunk.Body(mass, inertia)
-        front_wheel_body.friction = 100
+        front_wheel_body.friction = 1.0
         front_wheel_body.position = (200, 250)
         front_wheel = pymunk.Circle(front_wheel_body, radius, (0, 0))
+        front_wheel.collision_type = 2
         front_wheel_body_spring = pymunk.DampedSpring(
-            front_wheel_body, chassis_body, (0, -15), (50, -15), 50.0,
+            front_wheel_body, chassis_body, (0, 0), (50, -15), 50.0,
             stiffness, damping)
 
         rear_slide_joint = pymunk.SlideJoint(chassis_body, rear_wheel_body,
@@ -113,10 +117,10 @@ class TrackScene(Scene):
     def on_key_up(self, key, mod):
         for kart in self.karts:
             if key == K_RIGHT:
-                kart.rear_motor.rate = -100.0
-                kart.front_motor.rate = -100.0
+                kart.rear_motor.rate = -10
+                kart.front_motor.rate = -10
             elif key == K_LEFT:
-                kart.rear_motor.rate = 100.0
-                kart.front_motor.rate = 100.0
+                kart.rear_motor.rate = 10
+                kart.front_motor.rate = 10
             elif key == K_UP:
                     kart.chassis.apply_impulse((0, 6000))

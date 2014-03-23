@@ -48,8 +48,9 @@ class TrackScene(Scene):
 
         # floor
         floor_body = pymunk.Body()
-        floor_body.friction = 2.0
         floor = pymunk.Segment(floor_body, (0, 20), (640, 20), 50.0)
+        floor.friction = 2.0
+        floor.collision_type = 2
         self.space.add(floor)
 
         self.karts = list()
@@ -81,18 +82,18 @@ class TrackScene(Scene):
         stiffness = 300.0
 
         rear_wheel_body = pymunk.Body(mass, inertia)
-        rear_wheel_body.friction = 1.0
         rear_wheel_body.position = (100, 250)
         rear_wheel = pymunk.Circle(rear_wheel_body, radius, (0, 0))
+        rear_wheel.friction = 1.0
         rear_wheel.collision_type = 2
         rear_wheel_body_spring = pymunk.DampedSpring(
             rear_wheel_body, chassis_body, (0, 0), (-50, -15), 50.0,
             stiffness, damping)
 
         front_wheel_body = pymunk.Body(mass, inertia)
-        front_wheel_body.friction = 1.0
         front_wheel_body.position = (200, 250)
         front_wheel = pymunk.Circle(front_wheel_body, radius, (0, 0))
+        front_wheel.friction = 1.0
         front_wheel.collision_type = 2
         front_wheel_body_spring = pymunk.DampedSpring(
             front_wheel_body, chassis_body, (0, 0), (50, -15), 50.0,

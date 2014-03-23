@@ -44,7 +44,7 @@ class TrackScene(Scene):
         self.space.gravity = (0.0, -900.0)
 
         # floor
-        floor = pymunk.Segment(pymunk.Body(), (0, 10), (640, 10), 5.0)
+        floor = pymunk.Segment(pymunk.Body(), (0, 20), (640, 20), 50.0)
         self.space.add(floor)
 
         self.karts = list()
@@ -64,35 +64,35 @@ class TrackScene(Scene):
     def make_kart(self, space):
         # set up chassis
         mass = 100
-        moment = pymunk.moment_for_segment(mass, (-50, 0), (50, 0))
-        chassis_body = pymunk.Body(mass, moment)
-        chassis_body.position = 150, 150
-        chassis = pymunk.Segment(chassis_body, (-50, 0), (50, 0), 5.0)
+        chassis_body = pymunk.Body(mass, pymunk.inf)
+        chassis_body.position = 150, 300
+        chassis = pymunk.Segment(chassis_body, (-75, 0), (75, 0), 5.0)
 
-        # set up rear-suspension
+        # set up wheels
         mass = 1
-        moment = pymunk.moment_for_segment(mass, (0, 0), (0, 10))
-        rear_suspension_body = pymunk.Body(mass, moment)
-        rear_suspension_body.position = 100, 160
-        rear_suspension = pymunk.Segment(
-            rear_suspension_body, (0, 0), (0, 25), 1.0)
-        rear_suspension_body_joint = pymunk.SlideJoint(
-            rear_suspension_body, chassis_body, (0, 0), (-50, 0), 10.0, 15.0)
+        radius = 14
+        inertia = pymunk.moment_for_circle(mass, 0, radius, (0, 0))
+        damping = 0.0
+        stiffness = 250.0
 
-        # set up front-suspension
-        mass = 1
-        moment = pymunk.moment_for_segment(mass, (0, 0), (0, 10))
-        front_suspension_body = pymunk.Body(mass, moment)
-        front_suspension_body.position = 100, 160
-        front_suspension = pymunk.Segment(
-            front_suspension_body, (0, 0), (0, 25), 1.0)
-        front_suspension_body_joint = pymunk.SlideJoint(
-            front_suspension_body, chassis_body, (0, 0), (50, 0), 10.0, 15.0)
+        rear_wheel_body = pymunk.Body(mass, inertia)
+        rear_wheel_body.position = (100, 250)
+        rear_wheel = pymunk.Circle(rear_wheel_body, radius, (0, 0))
+        rear_wheel_body_spring = pymunk.DampedSpring(
+            rear_wheel_body, chassis_body, (0, 0), (-50, 0), 40.0,
+            stiffness, damping)
 
-        space.add(chassis_body, chassis, 
-                  rear_suspension_body, rear_suspension, rear_suspension_body_joint,
-                  front_suspension_body, front_suspension, front_suspension_body_joint)
+        front_wheel_body = pymunk.Body(mass, inertia)
+        front_wheel_body.position = (200, 250)
+        front_wheel = pymunk.Circle(front_wheel_body, radius, (0, 0))
+        front_wheel_body_spring = pymunk.DampedSpring(
+            front_wheel_body, chassis_body, (0, 0), (50, 0), 40.0,
+            stiffness, damping)
 
+        space.add(chassis_body, chassis, rear_wheel_body, rear_wheel,
+                  rear_wheel_body_spring,
+                  front_wheel_body, front_wheel,
+                  front_wheel_body_spring)
 
         return chassis
 
@@ -103,4 +103,4 @@ class TrackScene(Scene):
             pass
         elif key == K_UP:
             for kart in self.karts:
-                kart.body.apply_impulse((0, 30000))
+                kart.body.apply_impulse((0, 32000))

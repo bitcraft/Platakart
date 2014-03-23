@@ -48,8 +48,8 @@ class TrackScene(Scene):
 
         # floor
         floor_body = pymunk.Body()
-        floor = pymunk.Segment(floor_body, (0, 20), (640, 20), 50.0)
-        floor.friction = 2.0
+        floor = pymunk.Segment(floor_body, (-1000, 20), (1000, 20), 50.0)
+        floor.friction = .5
         floor.collision_type = 2
         self.space.add(floor)
 
@@ -119,10 +119,10 @@ class TrackScene(Scene):
     def on_key_up(self, key, mod):
         for kart in self.karts:
             if key == K_RIGHT:
-                kart.rear_motor.rate = 10
-                kart.front_motor.rate = 10
+                kart.rear_motor.rate = 25
+                kart.front_motor.rate = 25
             elif key == K_LEFT:
-                kart.rear_motor.rate = -10
-                kart.front_motor.rate = -10
+                kart.rear_motor.rate = -25
+                kart.front_motor.rate = -25
             elif key == K_UP:
                     kart.chassis.apply_impulse((0, 12000))

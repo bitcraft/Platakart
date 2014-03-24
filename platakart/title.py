@@ -132,7 +132,7 @@ class TitleScene(Scene):
 
         if self.fading_out >= 100:
             pub.sendMessage("game.switch-scene", name="track",
-                            options=None)
+                            options={"trackname": "testtrack1"})
         elif self.fading_out >= 0:
             self.fading_out += 10
             fade_rect = screen.get_rect()

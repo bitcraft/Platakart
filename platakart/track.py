@@ -11,11 +11,13 @@ import pygame.sprite
 import pygame.draw
 import pymunk
 import pymunk.pygame_util
+import pyscroll
 
 from pygame import K_DOWN
 from pygame import K_LEFT
 from pygame import K_RIGHT
 from pygame import K_UP
+from pymunktmx.shapeloader import load_shapes
 
 from platakart.ui import BLACK
 from platakart.ui import Scene
@@ -44,16 +46,18 @@ class Kart(pygame.sprite.Sprite):
                  kart_perf):
         super(Kart, self).__init__()
         self.id = id
-        self.space = space
         self.body_surf = body_surf
-        self.wheel_surf = wheel_surf
-        self.physics_initialized = False
-        self.start_pos = start_pos
-        self.motors = list()
-        self.wheels = list()
         self.chassis = None
-        self.perf = kart_perf
         self.direction = self.LEFT
+        self.map_data = None
+        self.map_layer = None
+        self.motors = list()
+        self.perf = kart_perf
+        self.physics_initialized = False
+        self.space = space
+        self.start_pos = start_pos
+        self.wheel_surf = wheel_surf
+        self.wheels = list()
 
     def _make_wheel(self, chassis_body, body_rect, mass,
                     h_offset_percent, v_offset_percent):
@@ -137,12 +141,17 @@ class Kart(pygame.sprite.Sprite):
     def draw(self, screen):
         degs_per_rad = 57.2957795
         for wheel in self.wheels:
-            wheel_surf = pygame.transform.rotate(
-                self.wheel_surf, wheel.angle * degs_per_rad)
-            p = pymunk.pygame_util.to_pygame(wheel.position, screen)
-            screen.blit(wheel_surf, p)
-        body_surf = pygame.transform.rotate(
-            self.body_surf, self.chassis.angle * degs_per_rad)
+            x, y = wheel.position
+            w, h = self.wheel_surf.get_size()
+            wheel_surf = pygame.transform.rotozoom(
+                self.wheel_surf, wheel.angle * degs_per_rad, 1)
+            ww, hh = wheel_surf.get_size()
+            rrect = pygame.Rect(x+4, screen.get_height() - y - h + 30, ww, hh)
+            rrect.move_ip((w-ww) / 2, (h-hh) / 2)
+            screen.blit(wheel_surf, rrect.topleft)
+
+        body_surf = pygame.transform.rotozoom(
+            self.body_surf, (self.chassis.angle * degs_per_rad) % 360, 1)
         p = pymunk.pygame_util.to_pygame(self.chassis.position, screen)
         r = body_surf.get_rect()
         r.topleft = p
@@ -183,19 +192,28 @@ class TrackScene(Scene):
     def get_name(self):
         return "track"
 
-    def setup(self):
+    def setup(self, options=None):
         logger.debug("Setting up track scene")
         self.space = pymunk.Space()
         self.space.gravity = (0.0, -900.0)
+
+        if options:
+            track_name = options.get("trackname")
+            if track_name:
+                tmx_data = self.resources.tilemaps[track_name]
+                load_shapes(tmx_data, space=self.space)
+                self.map_data = pyscroll.TiledMapData(tmx_data)
+                self.map_layer = pyscroll.BufferedRenderer(self.map_data, (640, 480))
+                self.map_layer.center((200, 200))
 
         # floor
         floor_body = pymunk.Body()
         floor = pymunk.Segment(floor_body, (-1000, 20), (1000, 20), 50.0)
         floor.friction = .5
-        self.space.add(floor)
+        #self.space.add(floor)
 
         self.karts = list()
-        perf = KartPerf(100, 8, 15)
+        perf = KartPerf(30, 8, 15)
         green_kart = Kart(
             "green-kart",
             self.space,
@@ -203,7 +221,7 @@ class TrackScene(Scene):
             self.resources.images["green-kart"],
             self.resources.images["wheel"],
             perf)
-        green_kart.init_physics()
+        # green_kart.init_physics()
         self.karts.append(green_kart)
         pub.subscribe(self.on_key_up, "input.key-up")
 
@@ -214,9 +232,11 @@ class TrackScene(Scene):
     def update(self, screen, delta):
         self.space.step(self.step_amt)
         screen.fill((128, 128, 255))
+        self.map_layer.update()
+        self.map_layer.draw(screen, pygame.Rect(0, 0, 640, 480))
         # pymunk.pygame_util.draw(screen, self.space)
-        for kart in self.karts:
-            kart.draw(screen)
+        #for kart in self.karts:
+        #    kart.draw(screen)
         pygame.display.flip()
 
     def on_key_up(self, key, mod):

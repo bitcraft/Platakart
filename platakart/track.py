@@ -32,12 +32,12 @@ class Kart(pygame.sprite.Sprite):
 
     RIGHT = 1
     LEFT = -1
-    CHASSIS_MASS = 15.0
-    WHEEL_MASS = 5.0
+    CHASSIS_MASS = 0.5
+    WHEEL_MASS = 1.5
     STIFFNESS = 205.0
     DAMPING = 0.01
-    WHEEL_FRICTION = 1.0
-    JUMP_IMPULSE = 12000
+    WHEEL_FRICTION = 1.8
+    JUMP_IMPULSE = 600
     REAR_WHEEL_OFFSET_PERCENT = .17186
     FRONT_WHEEL_OFFSET_PERCENT = .80129
     WHEEL_VERTICAL_OFFSET = .79858
@@ -56,6 +56,7 @@ class Kart(pygame.sprite.Sprite):
         self.physics_initialized = False
         self.space = space
         self.start_pos = start_pos
+        self.tmx_data = None
         self.wheel_surf = wheel_surf
         self.wheels = list()
 
@@ -80,15 +81,15 @@ class Kart(pygame.sprite.Sprite):
             wheel_body,
             chassis_body,
             (0, 0),
-            (-wheel_offset, -body_rect.height * .75),
+            (wheel_offset, -body_rect.height * .75),
             50.0,
             stiffness,
             damping)
 
         groove_joint = pymunk.GrooveJoint(
             chassis_body, wheel_body,
-            (-wheel_offset, -body_rect.height),
-            (-wheel_offset, -wheel_vertical_offset - (radius * 1.25)),
+            (wheel_offset, -body_rect.height),
+            (wheel_offset, -wheel_vertical_offset - (radius * 1.5)),
             (0, 0))
 
         motor = pymunk.SimpleMotor(chassis_body, wheel_body, 0.0)
@@ -177,7 +178,10 @@ class Kart(pygame.sprite.Sprite):
                     motor.rate = 0
 
     def jump(self):
-        self.chassis.apply_impulse((0, self.JUMP_IMPULSE))
+        impulse = (0, self.JUMP_IMPULSE)
+        self.chassis.apply_impulse(impulse)
+        for wheel in self.wheels:
+            wheel.apply_impulse(impulse)
 
 
 class TrackScene(Scene):
@@ -186,7 +190,11 @@ class TrackScene(Scene):
         self.resources = resources
         self.space = None
         self.karts = None
-        self.step_amt = 1.0 / float(conf.get("target_fps", 30))
+        self.step_amt = 1.0 / (float(conf.get("target_fps", 30)))
+        self.camera = None
+        self.buff = None
+        self.wireframe_mode = int(conf.get("wireframe_mode", 0))
+        self.show_mini_map = int(conf.get("show_mini_map", 0))
         logger.debug("Calculated space step amount = %f" % self.step_amt)
 
     def get_name(self):
@@ -201,27 +209,21 @@ class TrackScene(Scene):
             track_name = options.get("trackname")
             if track_name:
                 tmx_data = self.resources.tilemaps[track_name]
+                self.tmx_data = tmx_data
                 load_shapes(tmx_data, space=self.space)
                 self.map_data = pyscroll.TiledMapData(tmx_data)
                 self.map_layer = pyscroll.BufferedRenderer(self.map_data, (640, 480))
-                self.map_layer.center((200, 200))
-
-        # floor
-        floor_body = pymunk.Body()
-        floor = pymunk.Segment(floor_body, (-1000, 20), (1000, 20), 50.0)
-        floor.friction = .5
-        #self.space.add(floor)
 
         self.karts = list()
-        perf = KartPerf(30, 8, 15)
+        perf = KartPerf(100, 8, 15)
         green_kart = Kart(
             "green-kart",
             self.space,
-            (150, 150),
+            (200, 630),
             self.resources.images["green-kart"],
             self.resources.images["wheel"],
             perf)
-        # green_kart.init_physics()
+        green_kart.init_physics()
         self.karts.append(green_kart)
         pub.subscribe(self.on_key_up, "input.key-up")
 
@@ -230,13 +232,37 @@ class TrackScene(Scene):
         pub.unsubscribe(self.on_key_up, "input.key-up")
 
     def update(self, screen, delta):
+        if self.camera is None:
+            self.camera = screen.get_rect()
+            size = (self.tmx_data.tilewidth * self.tmx_data.width,
+                    self.tmx_data.tileheight * self.tmx_data.height)
+            self.buff = pygame.Surface(size, 0, screen)
+
         self.space.step(self.step_amt)
-        screen.fill((128, 128, 255))
-        self.map_layer.update()
-        self.map_layer.draw(screen, pygame.Rect(0, 0, 640, 480))
-        # pymunk.pygame_util.draw(screen, self.space)
-        #for kart in self.karts:
-        #    kart.draw(screen)
+
+        self.camera.center = pymunk.pygame_util.to_pygame(
+            self.karts[0].chassis.position, self.buff)
+
+        if self.wireframe_mode:
+            # self.buff.fill(BLACK)
+            
+            pymunk.pygame_util.draw(self.buff, self.space)
+        else:
+            self.map_layer.update()
+            self.map_layer.draw(self.buff, self.camera)
+            self.karts[0].draw(self.buff)
+        screen.blit(self.buff, (0, 0), self.camera)
+
+        if self.show_mini_map:
+            screen_rect = screen.get_rect()
+            buff_rect = self.buff.get_rect()
+            mini_map_rect = pygame.Rect(self.camera)
+            mini_map_rect.width = buff_rect.width * .075
+            mini_map_rect.height = buff_rect.height * .075
+            mini_map = pygame.transform.scale(self.buff, mini_map_rect.size)
+            mini_map_rect.topleft = (0, 0)
+            screen.blit(mini_map, mini_map_rect)
+            
         pygame.display.flip()
 
     def on_key_up(self, key, mod):

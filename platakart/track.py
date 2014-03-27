@@ -24,6 +24,21 @@ from platakart.ui import Scene
 
 from collections import namedtuple
 
+# number of space steps to take per frame beyond the first one. Space
+# will always step at least once per frame.
+EXTRA_SPACE_STEPS = 3
+COLLISION_LAYERS = [2**i for i in range(32)]
+
+# This crappy enumeration exists to make it easier to OR together the
+# bitmasks for the different layers. I.E. layers = L1 | L2 | L3
+L1, L2, L3, L4, L5, L6, L7, L8, L9, L10, \
+    L11, L12, L13, L14, L15, L16, L17, L18, L19, \
+    L20, L21, L22, L23, L24, L25, L26, L27, L28, \
+    L29, L30, L31, L32 = COLLISION_LAYERS
+
+# Up to 8 karts at the same time that don't hit eachother
+KARTS_LAYERS = L1 | L2 | L3 | L4 | L5 | L6 | L7 | L8
+
 KartPerf = namedtuple(
     "KartPerf", "max_motor_rate, acceleration_rate, break_rate")
 
@@ -54,6 +69,7 @@ class Kart(pygame.sprite.Sprite):
         self.motors = list()
         self.perf = kart_perf
         self.physics_initialized = False
+        self.player_kart = None
         self.space = space
         self.start_pos = start_pos
         self.tmx_data = None
@@ -61,7 +77,7 @@ class Kart(pygame.sprite.Sprite):
         self.wheels = list()
 
     def _make_wheel(self, chassis_body, body_rect, mass,
-                    h_offset_percent, v_offset_percent):
+                    h_offset_percent, v_offset_percent, layers):
         wheel_rect = self.wheel_surf.get_rect()
         radius = wheel_rect.width // 2
         inertia = pymunk.moment_for_circle(mass, 0, radius, (0, 0))
@@ -75,6 +91,7 @@ class Kart(pygame.sprite.Sprite):
         wheel_body.position = (chassis_body.position.x + wheel_offset,
                                chassis_body.position.y - (radius * 4))
         wheel = pymunk.Circle(wheel_body, radius, (0, 0))
+        wheel.layers = layers
         wheel.friction = self.WHEEL_FRICTION
 
         wheel_body_spring = pymunk.DampedSpring(
@@ -98,7 +115,7 @@ class Kart(pygame.sprite.Sprite):
 
         return wheel_body, wheel,  motor, groove_joint, wheel_body_spring
 
-    def init_physics(self):
+    def init_physics(self, layers=-1):
         if self.physics_initialized:
             logger.warning("Attempted multiple setups of physics for %s"
                            % self.id)
@@ -116,6 +133,7 @@ class Kart(pygame.sprite.Sprite):
         chassis = pymunk.Segment(
             chassis_body, (-half_width, 0), (half_width, 0),
             body_rect.height // 2)
+        chassis.layers = layers
         self.space.add(chassis_body, chassis)
         self.chassis = chassis_body
 
@@ -125,14 +143,16 @@ class Kart(pygame.sprite.Sprite):
             body_rect,
             self.WHEEL_MASS,
             self.REAR_WHEEL_OFFSET_PERCENT,
-            self.WHEEL_VERTICAL_OFFSET))
+            self.WHEEL_VERTICAL_OFFSET,
+            layers))
 
         self.space.add(*self._make_wheel(
             chassis_body,
             body_rect,
             self.WHEEL_MASS,
             self.FRONT_WHEEL_OFFSET_PERCENT,
-            self.WHEEL_VERTICAL_OFFSET))
+            self.WHEEL_VERTICAL_OFFSET,
+            layers))
 
         self.physics_initialized = True
 
@@ -210,21 +230,37 @@ class TrackScene(Scene):
             if track_name:
                 tmx_data = self.resources.tilemaps[track_name]
                 self.tmx_data = tmx_data
-                load_shapes(tmx_data, space=self.space)
+                load_shapes(tmx_data, space=self.space,
+                            default_layers=KARTS_LAYERS)
                 self.map_data = pyscroll.TiledMapData(tmx_data)
-                self.map_layer = pyscroll.BufferedRenderer(self.map_data, (640, 480))
+                self.map_layer = pyscroll.BufferedRenderer(
+                    self.map_data, (640, 480))
 
         self.karts = list()
         perf = KartPerf(100, 8, 15)
-        green_kart = Kart(
+        self.player_kart = Kart(
             "green-kart",
             self.space,
             (200, 630),
             self.resources.images["green-kart"],
             self.resources.images["wheel"],
             perf)
-        green_kart.init_physics()
-        self.karts.append(green_kart)
+        self.player_kart.init_physics(layers=L2)
+
+        self.karts.append(self.player_kart)
+
+        for i, color in enumerate(("green", "blue", "purple", "green",
+                                   "blue", "purple", "green")):
+            kart = Kart(
+                "%s-kart" % color,
+                self.space,
+                (350 + (i * 200), 630),
+                self.resources.images["%s-kart" % color],
+                self.resources.images["wheel"],
+                perf)
+            kart.init_physics(layers=COLLISION_LAYERS[i+2])
+            self.karts.append(kart)
+
         pub.subscribe(self.on_key_up, "input.key-up")
 
     def teardown(self):
@@ -238,23 +274,45 @@ class TrackScene(Scene):
                     self.tmx_data.tileheight * self.tmx_data.height)
             self.buff = pygame.Surface(size, 0, screen)
 
+        for kart in self.karts:
+            if kart is not self.player_kart:
+                d = random.choice((Kart.LEFT, Kart.LEFT, Kart.LEFT,
+                                   Kart.LEFT, Kart.LEFT, Kart.LEFT,
+                                   Kart.RIGHT, Kart.RIGHT, Kart.RIGHT,
+                                   Kart.RIGHT, Kart.RIGHT, Kart.RIGHT,
+                                   Kart.LEFT, Kart.LEFT, Kart.LEFT,
+                                   Kart.LEFT, Kart.LEFT, Kart.LEFT,
+                                   Kart.RIGHT, Kart.RIGHT, Kart.RIGHT,
+                                   Kart.RIGHT, Kart.RIGHT, Kart.RIGHT,
+                                   Kart.LEFT, Kart.LEFT, Kart.LEFT,
+                                   Kart.LEFT, Kart.LEFT, Kart.LEFT,
+                                   Kart.RIGHT, Kart.RIGHT, Kart.RIGHT,
+                                   Kart.RIGHT, Kart.RIGHT, Kart.RIGHT,
+                                   3))
+                if d == 3:
+                    kart.decelerate()
+                else:
+                    kart.accelerate(d)
+                
+
         step = self.step_amt * .25
         self.space.step(step)
-        self.space.step(step)
-        self.space.step(step)
-        self.space.step(step)
+        for i in range(EXTRA_SPACE_STEPS):
+            self.space.step(step)
+            self.space.step(step)
+            self.space.step(step)
 
         self.camera.center = pymunk.pygame_util.to_pygame(
             self.karts[0].chassis.position, self.buff)
 
         if self.wireframe_mode:
-            # self.buff.fill(BLACK)
-
+            self.buff.fill(BLACK)
             pymunk.pygame_util.draw(self.buff, self.space)
         else:
             self.map_layer.update()
             self.map_layer.draw(self.buff, self.camera)
-            self.karts[0].draw(self.buff)
+            for kart in self.karts:
+                kart.draw(self.buff)
         screen.blit(self.buff, (0, 0), self.camera)
 
         if self.show_mini_map:
@@ -266,16 +324,16 @@ class TrackScene(Scene):
             mini_map = pygame.transform.scale(self.buff, mini_map_rect.size)
             mini_map_rect.topleft = (0, 0)
             screen.blit(mini_map, mini_map_rect)
-            
+
         pygame.display.flip()
 
     def on_key_up(self, key, mod):
-        for kart in self.karts:
-            if key == K_RIGHT:
-                kart.accelerate(Kart.RIGHT)
-            elif key == K_LEFT:
-                kart.accelerate(Kart.LEFT)
-            elif key == K_UP:
-                kart.jump()
-            elif key == K_DOWN:
-                kart.decelerate()
+        kart = self.player_kart
+        if key == K_RIGHT:
+            kart.accelerate(Kart.RIGHT)
+        elif key == K_LEFT:
+            kart.accelerate(Kart.LEFT)
+        elif key == K_UP:
+            kart.jump()
+        elif key == K_DOWN:
+            kart.decelerate()

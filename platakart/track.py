@@ -238,14 +238,18 @@ class TrackScene(Scene):
                     self.tmx_data.tileheight * self.tmx_data.height)
             self.buff = pygame.Surface(size, 0, screen)
 
-        self.space.step(self.step_amt)
+        step = self.step_amt * .25
+        self.space.step(step)
+        self.space.step(step)
+        self.space.step(step)
+        self.space.step(step)
 
         self.camera.center = pymunk.pygame_util.to_pygame(
             self.karts[0].chassis.position, self.buff)
 
         if self.wireframe_mode:
             # self.buff.fill(BLACK)
-            
+
             pymunk.pygame_util.draw(self.buff, self.space)
         else:
             self.map_layer.update()
